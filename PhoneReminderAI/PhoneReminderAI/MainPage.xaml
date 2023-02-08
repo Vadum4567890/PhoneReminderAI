@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PhoneReminderAI.MainPage">
+
+    <StackLayout Orientation="Vertical" VerticalOptions="CenterAndExpand" HorizontalOptions="CenterAndExpand">
+        <Label FontSize="20" TextColor="Black" FontAttributes="Bold" HorizontalOptions="CenterAndExpand" Text="Join bluetooth"/>
+        <Button x:Name="Connect" Text="Connect"  FontSize="20" TextColor="White" FontAttributes="Bold" CornerRadius="50" TextTransform="None" Padding="100, 15" Margin="10" Clicked="Connect_OnClicked"/>
+    </StackLayout>
+
+</ContentPage>
