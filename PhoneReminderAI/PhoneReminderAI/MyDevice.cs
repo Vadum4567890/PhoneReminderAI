@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,38 +14,39 @@ namespace PhoneReminderAI
         public Guid Id { get; set; }
         public DeviceState State { get; set; }
         public string Name { get; set; }
-        public int Rssi => throw new NotImplementedException();
-        public object NativeDevice => throw new NotImplementedException();
-        public IList<AdvertisementRecord> AdvertisementRecords => throw new NotImplementedException();
+        public int Rssi => 1;
+
+        public object NativeDevice => null;
+        public IList<AdvertisementRecord> AdvertisementRecords => Enumerable.Empty<AdvertisementRecord>().ToList();
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            
         }
 
         public Task<IService> GetServiceAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return Task.FromResult<IService>(default);
         }
 
         public Task<IReadOnlyList<IService>> GetServicesAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return Task.FromResult<IReadOnlyList<IService>>(default);
         }
 
         public Task<int> RequestMtuAsync(int requestValue)
         {
-            throw new NotImplementedException();
+            return Task.FromResult<int>(default);
         }
 
         public bool UpdateConnectionInterval(ConnectionInterval interval)
         {
-            throw new NotImplementedException();
+            return interval == ConnectionInterval.Normal;
         }
 
         public Task<bool> UpdateRssiAsync()
         {
-            throw new NotImplementedException();
+            return Task.FromResult<bool>(default);
         }
     }
 }

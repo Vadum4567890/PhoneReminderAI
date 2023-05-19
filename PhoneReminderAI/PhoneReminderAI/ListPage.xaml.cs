@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using Plugin.BLE;
 using System.ComponentModel;
+using System.Diagnostics;
 using Xamarin.Forms;
 using Plugin.BLE.Abstractions.Contracts;
 using Plugin.BLE.Abstractions.Exceptions;
@@ -11,6 +12,7 @@ using IDevice = Plugin.BLE.Abstractions.Contracts.IDevice;
 using System.Threading;
 using Plugin.BLE.Abstractions;
 using Plugin.LocalNotification;
+using Xamarin.Essentials;
 using Exception = System.Exception;
 using ScanMode = Plugin.BLE.Abstractions.Contracts.ScanMode;
 
@@ -23,24 +25,61 @@ namespace PhoneReminderAI
         public IBluetoothLE ble;
         public IAdapter Adapter;
         public ObservableCollection<DeviceViewModel> deviceList;
+        public ObservableCollection<IDevice> _deviceList;
         public IDevice CurDevice;
-      
+
         public ListPage()
         {
 
             InitializeComponent();
-            
+
             ble = CrossBluetoothLE.Current;
             Adapter = CrossBluetoothLE.Current.Adapter;
-
+            Adapter.ScanMode = ScanMode.LowLatency;
+            ble.StateChanged += (s, e) =>
+            {
+                Debug.WriteLine("StateChanged: {0}", e.NewState);
+            };
             deviceList = new ObservableCollection<DeviceViewModel>();
-            DevicesList.ItemsSource = deviceList;
-  
-            this.BindingContext = this;
-            StartCheckingDeviceState();
+            _deviceList = new ObservableCollection<IDevice>();
+
+            Adapter.DeviceConnected += async (s, a) =>
+            {
+                Debug.WriteLine("Device Connected");
+                await DisplayAlert("Device Connected", a.Device.Name.ToString(), "Cancel");
+            };
+            Adapter.DeviceAdvertised += (s, a) =>
+            {
+                Debug.WriteLine("Device Advertised");
+            };
+            Adapter.DeviceConnectionLost += async (s, a) =>
+            {
+                Debug.WriteLine("Device ConnectionLost");
+                await DisplayAlert("Device ConnectionLost", a.Device.Name.ToString(), "Cancel");
+            };
+            Adapter.DeviceDisconnected += (s, a) =>
+            {
+                Debug.WriteLine("Device Disconnected");
+
+            };
+            //Adapter.ScanTimeoutElapsed += async (s, a) =>
+            //{
+
+            //    await DisplayAlert("Device ScanTimeout", "", "Cancel");
+            //};
+            Adapter.DeviceDiscovered += (s, a) =>
+            {
+                Debug.WriteLine("DebugDiscovered");
+
+                _deviceList.Add(a.Device);
+            };
+            DevicesList.ItemsSource = _deviceList;
+
+            // this.BindingContext = this;
+            //   StartCheckingDeviceState();
         }
 
-        
+
 
         private bool _isScanning = false;
         public bool IsScanning
@@ -69,40 +108,26 @@ namespace PhoneReminderAI
                     await DisplayAlert("Message", "Bluetooth is not available. Please turn on your Bluetooth", "OK");
                     return;
                 }
-
+                _deviceList.Clear();
                 deviceList.Clear();
                 Adapter.ScanMode = ScanMode.Balanced;
+                // Adapter.ScanTimeout = 10000;
                 IsScanning = true;
-                if (!ble.Adapter.IsScanning)
-                {
-                    var cts = new CancellationTokenSource();
-                    cts.CancelAfter(5000);
-                    Adapter.DeviceDiscovered += (s, a) =>
-                    {
-                        deviceList.Add(new DeviceViewModel() { Device = a.Device, DeviceName = a.Device.Name, DeviceType = (MyDevice)a.Device});
-                    };
-                    await Adapter.StartScanningForDevicesAsync(cancellationToken: cts.Token);
-                }
+                //var scanfilterobj = new ScanFilterOptions { };
+                await Adapter.StartScanningForDevicesAsync(allowDuplicatesKey: true);
             }
             catch (Exception ex)
             {
                 IsScanning = false;
                 await DisplayAlert("Notice", ex.Message.ToString(), "Error !");
             }
-            finally
-            {
-                if (ble.Adapter.IsScanning)
-                {
-                    await Adapter.StopScanningForDevicesAsync();
-                    
-                }
-            }
 
-            IsScanning = false; 
-            
-            var device = new DeviceViewModel() {DeviceName = "BMW X5", DeviceType = new MyDevice() { State = DeviceState.Disconnected, Name = "BMW X5" }};
-        
-            deviceList.Add(device);
+
+            IsScanning = false;
+
+
+            //var _device = new MyDevice() { Id = Guid.NewGuid(), Name = "Iphone 14", State = DeviceState.Disconnected };
+            //_deviceList.Add(_device);
         }
 
 
@@ -113,7 +138,7 @@ namespace PhoneReminderAI
         {
             if (CurDevice == null)
             {
-                
+
             }
             else
             {
@@ -158,56 +183,33 @@ namespace PhoneReminderAI
             await LocalNotificationCenter.Current.Show(notification);
         }
 
-
+        private IDevice device;
         private async void DevicesList_OnItemSelected(object sender, SelectedItemChangedEventArgs e)
         {
-            
-            if (DevicesList.SelectedItem == null)
+            device = DevicesList.SelectedItem as IDevice;
+            var result = await DisplayAlert("Message", "Do you want to connect to this device?", "Connect", "Cancel");
+            if (!result)
             {
-                await DisplayAlert("Error", "Please select a device from the list first.", "OK");
                 return;
             }
-            CurDevice = ((DeviceViewModel)DevicesList.SelectedItem).DeviceType;
 
-            if (CurDevice != null)
+            await Adapter.StopScanningForDevicesAsync();
+            try
             {
-                if (CurDevice.State == DeviceState.Disconnected)
-                {
-                    var result = await DisplayAlert("Message", "Do you want to connect to this device?", "Connect", "Cancel");
-                    if (result)
-                    {
-                        try
-                        {
-                            StartCheckingDeviceState();
-                            var crf = new CancellationToken();
-                            await Adapter.ConnectToDeviceAsync(CurDevice,ConnectParameters.None, cancellationToken: crf);
-                            await DisplayAlert("Message", "Connected to device with Id: " + CurDevice.Id, "OK");
-                           
-                        }
-                        catch (DeviceConnectionException ex)
-                        {
-                            await DisplayAlert("Error", ex.Message, "OK");
-                            DevicesList.SelectedItem = null;
-                        }
-                        catch (InvalidCastException ex)
-                        {
-                            await DisplayAlert("Error", "The cast is not valid. Error: " + ex.Message, "OK");
-                            DevicesList.SelectedItem = null;
-                        }
-                    }
-                    else
-                    {
-                        await DisplayAlert("Error", "Try again", "OK");
-                        DevicesList.SelectedItem = null;
-                    }
-                }
-                else
-                {
-                    await DisplayAlert("Error", "Device is already connected or being connected", "OK");
-                    DevicesList.SelectedItem = null;
-                }
+                MainThread.BeginInvokeOnMainThread(async () => await Adapter.ConnectToDeviceAsync(device, new ConnectParameters(true, true)));
+                await DisplayAlert("Connect", $"Status: {device.State}", "Ok");
             }
+            catch (InvalidCastException ex)
+            {
+                await DisplayAlert("Error", ex.Message, "Cancel");
+            }
+            catch (DeviceConnectionException exception)
+            {
+                await DisplayAlert("Error", exception.Message, "Cancel");
+            }
+
         }
     }
 }
 
+    

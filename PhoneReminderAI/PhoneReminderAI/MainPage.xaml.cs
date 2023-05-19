@@ -15,9 +15,7 @@ namespace PhoneReminderAI
 {
     public partial class MainPage : ContentPage
     {
-        //public readonly IBluetoothLE ble;
-        //public readonly IAdapter adapter;
-        //public readonly ObservableCollection<IDevice> devicesList;
+        
         public MainPage()
         {
             InitializeComponent();
